@@ -1,0 +1,56 @@
+// Line comment.
+Bool: Typ =
+  @bool {P: Bool -> Typ}
+  P(true) -> P(false) -> P(bool)
+
+true: Bool =
+  lam {P} t f. t
+
+false: Bool =
+  lam {P} t f. f
+
+// Here are Church encoded natural numbers.
+Nat: Typ =
+  @nat {P: Nat -> Typ}
+  (s: {n: Nat} P(n) -> P(succ(n))) ->
+  (z: P(zero)) ->
+  P(nat)
+
+succ: Nat -> Nat =
+  lam n. lam {P} s z. s{n}(n{P}(s)(z))
+
+zero: Nat =
+  lam {P} s z. z
+
+// The predecessor on Church numerals is famously
+// tricky to write in lambda calculus. Here with the
+// self-type encoding it is actually easier!
+pred: Nat -> Nat =
+  lam n.
+  n{lam _. Nat}(lam {_} k. k)(zero)
+
+// Boolean negation.
+not: Bool -> Bool =
+  let P = lam _. Bool
+  lam b. b{P}(false)(true)
+
+// Type whose term are intensional equality proofs.
+Equal: {A: Typ} A -> A -> Typ =
+  lam {A} a b.
+  @equal {P: (x: A) -> Equal{A}(a)(x) -> Typ}
+  P(a)(refl{A}(a)) -> P(b)(equal)
+
+refl: {A: Typ} (a: A) -> Equal{A}(a)(a) =
+  lam {A} a.
+  lam {P} r. r
+
+// This proves that double negation results in the noop.
+// Doesn't seem like much but consider that functions can
+// not be compared for this sort of intensional equality,
+// even in languages like Haskell. One can imagine comparing
+// quick sort and merge sort for equality (i.e., do they
+// produce the same results for all inputs).
+double_negation: (b: Bool) -> Equal{Bool}(not(not(b)))(b) =
+  lam b.
+  let P = lam s. Equal{Bool}(not(not(s)))(s)
+  b{P}(refl{Bool}(true))(refl{Bool}(false))

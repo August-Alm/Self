@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="AST.fs" />
+
+    <FsYacc Include="Parser.fsy">
+        <OtherFlags>-v --module Self.Syntax.Parser</OtherFlags>
+    </FsYacc>
+    <FsLex Include="Lexer.fsl">
+        <OtherFlags>--module Self.Syntax.Lexer --unicode</OtherFlags>
+    </FsLex>
+
+    <Compile Include="Parser.fsi" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="Lexer.fs" />
+    <Compile Include="Frontend.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Self.Core/Self.Core.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FsLexYacc" Version="10.2.0" />
+  </ItemGroup>
+</Project>

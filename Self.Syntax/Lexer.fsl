@@ -1,0 +1,47 @@
+{
+open FSharp.Text.Lexing
+open Parser
+
+let lexeme lexbuf = LexBuffer<_>.LexemeString lexbuf
+
+let incrLine (lexbuf : LexBuffer<_>) =
+  lexbuf.EndPos <- lexbuf.EndPos.NextLine
+
+let lexError (lexbuf : LexBuffer<_>) =
+  let lin = lexbuf.EndPos.Line + 1
+  let col = lexbuf.EndPos.Column
+  $"Bad token {lexeme lexbuf} at ({lin}, {col})."
+}
+
+let newline = '\n' | '\r' '\n'
+let whitespace = [' ' '\t']+
+let name = ['a'-'z' 'A'-'Z' '_']+(['0'-'9']+)?
+let number = '-'? ['0'-'9']+
+let operator = ['+' '-' '*' '/']
+
+rule tokenize = parse
+  | "//"          { comment lexbuf; tokenize lexbuf }
+  | newline       { incrLine lexbuf; tokenize lexbuf }
+  | whitespace    { tokenize lexbuf }
+  | number        { NUMBER (lexeme lexbuf |> System.Int32.Parse) }
+  | operator      { OP (lexeme lexbuf) }
+  | "lam"         { LAM }
+  | "let"         { LET }
+  | "fix"         { FIX }
+  | "Typ"         { TYP }
+  | name          { NAME (lexeme lexbuf |> string) }
+  | '@'           { SLF }
+  | "->"          { ARROW }
+  | '.'           { DOT }
+  | ':'           { COLON }
+  | '='           { EQUAL }
+  | '('           { LPAREN }
+  | ')'           { RPAREN }
+  | '{'           { LCURLY }
+  | '}'           { RCURLY }
+  | eof           { EOF }
+  | _             { lexError lexbuf |> failwithf "%s" }
+
+and comment = parse
+  | newline       { incrLine lexbuf }
+  | _             { comment lexbuf }
