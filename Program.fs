@@ -18,6 +18,11 @@ module Program =
       for def in md.Defs do
         check eq bb md [] def.Term def.Type
       printfn "All terms check!"
+      for def in md.Defs do
+        let nam = def.Name
+        let typ = erase def.Type
+        let trm = erase def.Term
+        printf $"{nam}: "; printTerm typ; printfn "="; printTerm trm 
     with
     | :? TypeMismatch as e ->
       let ctx, t1, t2 = e.Data0, e.Data1, e.Data2

@@ -12,12 +12,12 @@ false: Bool =
 // Here are Church encoded natural numbers.
 Nat: Typ =
   @nat {P: Nat -> Typ}
-  (s: {n: Nat} P(n) -> P(succ(n))) ->
+  (s: (n: Nat) -> P(succ(n))) ->
   (z: P(zero)) ->
   P(nat)
 
 succ: Nat -> Nat =
-  lam n. lam {P} s z. s{n}(n{P}(s)(z))
+  lam n. lam {P} s z. s(n)
 
 zero: Nat =
   lam {P} s z. z
@@ -26,13 +26,11 @@ zero: Nat =
 // to write in lambda calculus. Here with the self-type
 // encoding it is actually easier!
 pred: Nat -> Nat =
-  lam n.
-  n{lam _. Nat}(lam {_} k. k)(zero)
+  lam n. n{lam _. Nat}(lam k. k)(zero)
 
 // Boolean negation.
 not: Bool -> Bool =
-  let P = lam _. Bool
-  lam b. b{P}(false)(true)
+  lam b. b{lam _. Bool}(false)(true)
 
 // Type whose term are intensional equality proofs.
 Equal: {A: Typ} A -> A -> Typ =

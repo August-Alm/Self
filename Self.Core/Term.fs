@@ -16,6 +16,16 @@ module Term =
     | Ann of bool * Term * Term
     | Typ
   
+  let rec erase trm =
+    match trm with
+    | Lam (true, _, b) -> erase (b (Var ("<erased>", 0)))
+    | Lam (e, x, b) -> Lam (e, x, erase << b)
+    | App (true, f, _) -> erase f
+    | App (e, f, a) -> App (e, erase f, erase a)
+    | All (e, x, d, c) -> All (e, x, erase d, erase << c)
+    | Slf (s, x, d, c) -> All (true, x, d, c (Var (s, 0)))
+    | _ -> trm
+
   type Def = {Name : string; Type : Term; Term : Term}
   type Module = {Defs : Def[]}
 
