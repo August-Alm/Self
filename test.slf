@@ -1,4 +1,4 @@
-// Line comment.
+// Line comment. No block comments allowed.
 Bool: Typ =
   @bool {P: Bool -> Typ}
   P(true) -> P(false) -> P(bool)
@@ -22,9 +22,9 @@ succ: Nat -> Nat =
 zero: Nat =
   lam {P} s z. z
 
-// The predecessor on Church numerals is famously
-// tricky to write in lambda calculus. Here with the
-// self-type encoding it is actually easier!
+// The predecessor on Church numerals is famously tricky
+// to write in lambda calculus. Here with the self-type
+// encoding it is actually easier!
 pred: Nat -> Nat =
   lam n.
   n{lam _. Nat}(lam {_} k. k)(zero)
@@ -54,3 +54,21 @@ double_negation: (b: Bool) -> Equal{Bool}(not(not(b)))(b) =
   lam b.
   let P = lam s. Equal{Bool}(not(not(s)))(s)
   b{P}(refl{Bool}(true))(refl{Bool}(false))
+
+// Just because we're functional programmers with dependent
+// types at our hands: vectors!
+Vec: {len: Nat} Typ -> Typ =
+  lam {len} A.
+  @vec {P: Vec{len}(A) -> Typ}
+  (c: (x: A) -> (xs: Vec{len}(A)) -> P(cons{len}{A}(x)(xs))) ->
+  (n: P(nil(A))) ->
+  P(vec)
+
+cons: {len: Nat} {A: Typ} A -> Vec{len}(A) -> Vec{succ(len)}(A) =
+  lam {len} {A} x xs.
+  lam {P} c n.
+  c(x)(xs)
+
+nil: (A: Typ) -> Vec{zero}(A) =
+  lam A.
+  lam {P} c n. n
