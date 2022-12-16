@@ -5,6 +5,10 @@ module Print =
   open Term
   open System.Text
 
+  type R = private { _Num : int }
+  module E =
+    let num r = r._Num
+
   let inline append (sb : StringBuilder) (s : string) =
     sb.Append s |> ignore
   
@@ -33,9 +37,17 @@ module Print =
         append sb "} "
         appendTerm sb (bind x c)
       elif System.String.IsNullOrEmpty x then
-        appendTerm sb d
-        append sb " -> "
-        appendTerm sb (bind "" c)
+        match d with
+        | All (false, _, _, _) ->
+          append sb "("
+          appendTerm sb d
+          append sb ")"
+          append sb " -> "
+          appendTerm sb (bind "" c)
+        | _ ->
+          appendTerm sb d
+          append sb " -> "
+          appendTerm sb (bind "" c)
       else
         append sb $"({x}: "
         appendTerm sb d

@@ -16,16 +16,6 @@ module Term =
     | Ann of bool * Term * Term
     | Typ
   
-  let rec erase trm =
-    match trm with
-    | Lam (true, _, b) -> erase (b (Var ("<erased>", 0)))
-    | Lam (e, x, b) -> Lam (e, x, erase << b)
-    | App (true, f, _) -> erase f
-    | App (e, f, a) -> App (e, erase f, erase a)
-    | All (e, x, d, c) -> All (e, x, erase d, erase << c)
-    | Slf (s, x, d, c) -> All (true, x, d, c (Var (s, 0)))
-    | _ -> trm
-
   type Def = {Name : string; Type : Term; Term : Term}
   type Module = {Defs : Def[]}
 
@@ -197,3 +187,22 @@ module Term =
     | Typ -> Typ
     | Ann (d, u, t) -> (if not d then check eq bb md ctx u t); t
     | _ -> raise <| NotInferrable (ctx, trm)
+
+  // Work in progress.
+  let rec erase md trm =
+    normalize md (Seen ()) true trm
+    (*
+    match trm with
+    | Lam (true, _, b) -> erase (b (Var ("<erased>", 0)))
+    | Lam (e, x, b) -> Lam (e, x, erase << b)
+    | App (true, f, _) -> erase f
+    | App (_, f, Var ("<erased>", _)) -> erase f
+    | App (e, App (true, Var (n, i), _), _) -> Var (n, i) 
+    | App (e, f, a) -> App (e, erase f, erase a)
+    | All (true, x, Typ, c) -> All (true, x, Typ, erase << c)
+    | All (false, _, d, c) -> All (false, "", erase d, erase << c)
+    | All (e, x, d, c) -> erase (c (Var ("<erased>", 0)))
+    | Slf (s, x, d, c) ->
+      All (true, x, Typ, fun y -> erase (c (Var ("<erased>", 0)) (App (true, Var (x, 1), y))))
+    | _ -> trm
+    *)

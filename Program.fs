@@ -20,8 +20,8 @@ module Program =
       printfn "All terms check!"
       for def in md.Defs do
         let nam = def.Name
-        let typ = erase def.Type
-        let trm = erase def.Term
+        let typ = erase md def.Type
+        let trm = erase md def.Term
         printf $"{nam}: "; printTerm typ; printfn "="; printTerm trm 
     with
     | :? TypeMismatch as e ->
