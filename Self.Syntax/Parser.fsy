@@ -11,6 +11,8 @@ let getLine (parseState : IParseState) =
 %token LET
 %token FIX
 %token SLF
+%token NEW
+%token USE
 %token TYP
 %token ARROW
 %token LPAREN
@@ -53,19 +55,21 @@ def:
   { {Line = getLine parseState; Name = $1; PType = $3; PTerm = $5} }
 
 term:
-  | LAM lambdabind                                { $2 }
-  | LET NAME EQUAL term term                      { PLet ($2, $4, $5) }
-  | FIX NAME DOT term                             { PFix ($2, $4) }
-  | LPAREN NAME COLON term RPAREN ARROW term      { PAll (false, $2, $4, $7) }
-  | term ARROW term                               { PAll (false, "", $1, $3) }
-  | LCURLY NAME COLON term RCURLY term            { PAll (true, $2, $4, $6) }
-  | SLF NAME LCURLY NAME COLON term RCURLY term   { PSlf ($2, $4, $6, $8) }
-  | term LPAREN term RPAREN                       { PApp (false, $1, $3) }
-  | term LCURLY term RCURLY                       { PApp (true, $1, $3) }
-  | term COLON term                               { PAnn ($1, $3) }
-  | TYP                                           { PTyp }
-  | NAME                                          { PVar $1 }
-  | LPAREN term RPAREN                            { $2 }
+  | LAM lambdabind                            { $2 }
+  | LET NAME EQUAL term term                  { PLet ($2, $4, $5) }
+  | FIX NAME DOT term                         { PFix ($2, $4) }
+  | LPAREN NAME COLON term RPAREN ARROW term  { PAll (false, $2, $4, $7) }
+  | term ARROW term                           { PAll (false, "", $1, $3) }
+  | LCURLY NAME COLON term RCURLY term        { PAll (true, $2, $4, $6) }
+  | SLF NAME term                             { PSlf ($2, $3) }
+  | term LPAREN term RPAREN                   { PApp (false, $1, $3) }
+  | term LCURLY term RCURLY                   { PApp (true, $1, $3) }
+  | term COLON term                           { PAnn ($1, $3) }
+  | TYP                                       { PTyp }
+  | NAME                                      { PVar $1 }
+  | NEW NAME term                             { PNew ($2, $3) }
+  | USE term                                  { PUse ($2) }
+  | LPAREN term RPAREN                        { $2 }
 
 lambdabind:
   | NAME DOT term                     { PLam (false, $1, $3) }

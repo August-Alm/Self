@@ -5,6 +5,7 @@ module BytesBuilder =
   open Microsoft.FSharp.NativeInterop
   open System.Security.Cryptography
   open System
+  open System.Runtime.InteropServices
 
   type BytesBuilder (cap : int) =
     let ms = new IO.MemoryStream(cap)
@@ -13,6 +14,7 @@ module BytesBuilder =
       member _.Dispose () = ms.Dispose ()
 
     member _.Add (bs : Span<byte>) = ms.Write bs
+    member _.Add (cs : ReadOnlySpan<char>) = ms.Write (MemoryMarshal.Cast<char, byte> cs)
     member _.Add (b : byte) = ms.WriteByte b
     member _.Add (i : int) =
       let mutable i = i

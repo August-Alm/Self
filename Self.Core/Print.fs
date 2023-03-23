@@ -53,12 +53,15 @@ module Print =
         appendTerm sb d
         append sb ") -> "
         appendTerm sb (bind x c)
-    | Slf (s, x, d, c) ->
+    | Slf (s, t) ->
       append sb $"@{s} "
-      append sb (sprintf "{%s: " x)
-      appendTerm sb d
-      append sb "} "
-      appendTerm sb (bind2 s x c)
+      appendTerm sb (bind s t)
+    | New (s, t) ->
+      append sb $"new {s} "
+      appendTerm sb t
+    | Use t ->
+      append sb "use "
+      appendTerm sb t
     | Ann (d, u, t) ->
       if d then
         appendTerm sb u

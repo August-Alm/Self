@@ -27,6 +27,8 @@ rule tokenize = parse
   | operator      { OP (lexeme lexbuf) }
   | "lam"         { LAM }
   | "let"         { LET }
+  | "new"         { NEW }
+  | "use"         { USE }
   | "fix"         { FIX }
   | "Typ"         { TYP }
   | name          { NAME (lexeme lexbuf |> string) }

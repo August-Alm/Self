@@ -9,6 +9,7 @@
     <Compile Include="BytesBuilder.fs" />
     <Compile Include="Term.fs" />
     <Compile Include="Print.fs" />
+    <Compile Include="Bound.fs" />
     <Compile Include="Kore.fs" />
   </ItemGroup>
 

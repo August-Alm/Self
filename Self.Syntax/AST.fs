@@ -11,7 +11,9 @@ module PTerm =
     | PLet of string * PTerm * PTerm
     | PFix of string * PTerm
     | PAll of bool * string * PTerm * PTerm
-    | PSlf of string * string * PTerm * PTerm
+    | PSlf of string * PTerm
+    | PNew of string * PTerm
+    | PUse of PTerm
     | PAnn of PTerm * PTerm
     | PTyp
 
@@ -40,8 +42,9 @@ module PTerm =
       | PFix (f, b) -> Fix (f, fun ft -> go ((f, ft) :: env) b)
       | PAll (e, x, d, c) -> All (e, x, go env d, fun xt -> go ((x, xt) :: env) c)
       | PLet (x, e, t) -> go ((x, go env e) :: env) t
-      | PSlf (s, x, d, c) ->
-        Slf (s, x, go env d, fun st xt -> go ((x, xt) :: (s, st) :: env) c)
+      | PSlf (s, t) -> Slf (s, fun st -> go ((s, st) :: env) t)
+      | PNew (s, t) -> New (s, go env t)
+      | PUse t -> Use (go env t)
       | PAnn (u, t) -> Ann (false, go env u, go env t)
       | PTyp _ -> Typ
     {Defs =

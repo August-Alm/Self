@@ -1,5 +1,6 @@
 ﻿namespace Self.Core
 
+
 module Term =
 
   open BytesBuilder
@@ -12,7 +13,9 @@ module Term =
     | App of bool * Term * Term
     | Fix of string * (Term -> Term)
     | All of bool * string * Term * (Term -> Term) 
-    | Slf of string * string * Term * (Term -> Term -> Term)
+    | Slf of string * (Term -> Term)
+    | New of string * Term
+    | Use of Term
     | Ann of bool * Term * Term
     | Typ
   
@@ -31,8 +34,9 @@ module Term =
     | Fix (f, b) -> bb.Add 'F'B; serbind f b
     | App (e, f, a) -> bb.Add 'a'B; addEras e; ser f; ser a
     | All (e, x, d, c) -> bb.Add 'A'B; addEras e; ser d; serbind x c
-    | Slf (s, x, d, c) ->
-      bb.Add 'S'B; ser d; serialize (dep + 2) bb (c (Var (s, -dep - 1)) (Var (x, -dep - 2)))
+    | Slf (s, t) -> bb.Add 'S'B; bb.Add s; serbind s t
+    | New (s, t) -> bb.Add 'N'B; bb.Add s; ser t
+    | Use t -> bb.Add 'U'B; ser t
     | Ann (_, u, _) -> ser u
     | Typ -> bb.Add 'T'B
 
@@ -51,13 +55,15 @@ module Term =
     let inline go trm = reduce md erase trm
     match trm with
     | Ref (_, i) -> go md.Defs[i].Term
-    | Lam (e, _, b) ->
-      if e && erase then go (b (Lam (false, "", fun x -> x))) else trm
+    | Lam (e, _, b) when e && erase -> go (b (Lam (false, "", fun x -> x)))
     | Fix (f, b) -> go (b (Fix (f, b)))
     | App (e, f, a) ->
       if e && erase then go f
       else match go f with Lam (_, _, b) -> go (b a) | _ -> trm 
     | Ann (_, u, _) -> go u
+    | New (s, t) -> New (s, go t)
+    | Use (New (_, t)) -> go t
+    | Use t -> Use (go t)
     | _ -> trm
   
   type Seen = HashSet<System.Guid>
@@ -74,7 +80,9 @@ module Term =
       | Fix (f, b) -> go (b (Fix (f, b)))
       | App (e, f, a) -> App (e, go f, go a)
       | All (e, x, d, c) -> All (e, x, go d, fun x -> go (c x))
-      | Slf (s, x, d, c) -> Slf (s, x, go d, fun s x -> go (c s x))
+      | Slf (s, t) -> Slf (s, fun s -> go (t s))
+      | New (s, t) -> New (s, go t)
+      | Use t -> Use (go t)
       | Ann (_, u, _) -> go u
       | _ -> trm'
 
@@ -101,7 +109,6 @@ module Term =
       else
         bb.Clear ()
         let inline bind x b = b (Var (x, dep))
-        let inline bind2 s x c = c (Var (s, dep)) (Var (x, dep + 1))
         match t1, t2 with
         | Lam (e, x, b), Lam (e', x', b') ->
           e = e' && go (dep + 1) (bind x b) (bind x' b')
@@ -109,8 +116,8 @@ module Term =
           e = e' && go dep f f' && go dep a a'
         | All (e, x, d, c), All (e', x', d', c') ->
           e = e' && go dep d d' && go (dep + 1) (bind x c) (bind x' c')
-        | Slf (s, x, d, c), Slf (s', x', d', c') ->
-          s = s' && go dep d d' && go (dep + 2) (bind2 s x c) (bind2 s' x' c')
+        | Slf (s, t), Slf (s', t') ->
+          s = s' && go (dep + 1) (bind s t) (bind s' t')
         | Ann (_, u, _), Ann (_, u', _) -> go dep u u'
         | _ -> false
     go dep trm1 trm2
@@ -137,14 +144,17 @@ module Term =
         else
           let xVar = Ann (true, Var (x, depth ctx), d)
           check eq bb md ((x, d) :: ctx) (b xVar) (c xVar)
-      | Slf (_, _, d, c) ->
-        if not e then
-          raise <| ErasureMismatch (ctx, trm, tty)
+      | _ -> raise <| NonFunctionLambda (ctx, trm, tty)
+    | New (s, t) ->
+      let tty = reduce md false typ
+      match tty with
+      | Slf (s', a) ->
+        if s <> s' then
+          failwith $"Self-names {s} and {s'} do not match."
         else
           let sVar = Ann (true, trm, typ)
-          let xVar = Ann (true, Var (x, depth ctx + 1), d)
-          check eq bb md ((x, d) :: ctx) (b xVar) (c sVar xVar)
-      | _ -> raise <| NonFunctionLambda (ctx, trm, tty)
+          check eq bb md ctx t (a sVar)
+      | _ -> failwith "New-term of non-self type."
     | Fix (f, b) -> check eq bb md ctx (b (Fix (f, b))) typ
     | _ ->
       let infr = infer eq bb md ctx trm
@@ -164,26 +174,20 @@ module Term =
           let nVar = Ann (true, a, d)
           check eq bb md ctx a d
           c nVar
-      | Slf (_, _, d, c) as tty ->
-        if not e then
-          raise <| ErasureMismatch (ctx, trm, tty)
-        else
-          let sVar = Ann (true, f, tty)
-          let nVar = Ann (true, a, d)
-          check eq bb md ctx a d
-          c sVar nVar
       | tty -> raise <| NonFunctionApplication (ctx, trm, tty)
     | All (_, x, d, c) ->
       let xVar = Ann (true, Var (x, depth ctx), d)
       check eq bb md ctx d Typ
       check eq bb md ((x, xVar) :: ctx) (c xVar) Typ
       Typ
-    | Slf (s, x, d, c) ->
+    | Slf (s, t) ->
       let sVar = Ann (true, Var (s, depth ctx), trm)
-      let xVar = Ann (true, Var (x, depth ctx + 1), d)
-      check eq bb md ctx d Typ
-      check eq bb md ((x, xVar) :: (s, sVar):: ctx) (c sVar xVar) Typ
+      check eq bb md ctx (t sVar) Typ
       Typ
+    | Use t ->
+      match infer eq bb md ctx t with
+      | Slf (_, ty) -> ty t
+      | _ -> failwith "Use of non-self type."
     | Typ -> Typ
     | Ann (d, u, t) -> (if not d then check eq bb md ctx u t); t
     | _ -> raise <| NotInferrable (ctx, trm)
