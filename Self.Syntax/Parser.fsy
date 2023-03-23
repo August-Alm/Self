@@ -68,7 +68,7 @@ term:
   | TYP                                       { PTyp }
   | NAME                                      { PVar $1 }
   | NEW NAME term                             { PNew ($2, $3) }
-  | USE term                                  { PUse ($2) }
+  | LPAREN USE term RPAREN                    { PUse ($3) }
   | LPAREN term RPAREN                        { $2 }
 
 lambdabind:

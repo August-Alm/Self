@@ -9,6 +9,10 @@ true: Bool =
 false: Bool =
   new Bool_self lam {P} t f. f
 
+// Boolean negation.
+not: Bool -> Bool =
+  lam b. (use b){lam _. Bool}(false)(true)
+
 // Here are Church encoded natural numbers.
 //Nat: Typ =
 //  @nat {P: Nat -> Typ}
@@ -27,10 +31,6 @@ false: Bool =
 //// encoding it is actually easier!
 //pred: Nat -> Nat =
 //  lam n. n{lam _. Nat}(lam {_} p. p)(zero)
-//
-//// Boolean negation.
-//not: Bool -> Bool =
-//  lam b. b{lam _. Bool}(false)(true)
 //
 //// Type whose term are intensional equality proofs.
 //Equal: {A: Typ} A -> A -> Typ =

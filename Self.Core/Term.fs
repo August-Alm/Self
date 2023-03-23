@@ -187,7 +187,11 @@ module Term =
     | Use t ->
       match infer eq bb md ctx t with
       | Slf (_, ty) -> ty t
-      | _ -> failwith "Use of non-self type."
+      | Ref (_, i) ->
+        match md.Defs[i].Term with
+        | Slf (_, ty) -> ty t
+        | tty -> failwith $"Use of non-self type {tty}."
+      | tty -> failwith $"Use of non-self type {tty}."
     | Typ -> Typ
     | Ann (d, u, t) -> (if not d then check eq bb md ctx u t); t
     | _ -> raise <| NotInferrable (ctx, trm)
