@@ -71,7 +71,7 @@ module Print =
         append sb ": "
         appendTerm sb t
         append sb ")"
-    | Typ -> append sb "Typ"
+    | Typ -> append sb "Type"
   
   let printTerm trm =
     let sb = StringBuilder 256

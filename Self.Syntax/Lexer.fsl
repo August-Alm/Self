@@ -30,7 +30,8 @@ rule tokenize = parse
   | "new"         { NEW }
   | "use"         { USE }
   | "fix"         { FIX }
-  | "Typ"         { TYP }
+  | "Type"        { TYP }
+  | "data"        { DAT }
   | name          { NAME (lexeme lexbuf |> string) }
   | '@'           { SLF }
   | "->"          { ARROW }

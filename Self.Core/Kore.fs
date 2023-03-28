@@ -1,5 +1,121 @@
 namespace Self.Core
 
+module Sweet =
+
+  open System.Collections.Generic
+
+  type Name = string
+
+  type Term =
+    | Var of Name
+    | Lam of Name * Term
+    | App of Term * Term
+    | Pi of Name * Term * Term
+    | Self of Name * Term
+    | New of Name * Term
+    | Use of Term
+    | Let of Name * Term * Term * Term
+    | Typ
+
+  type Def = { Type : Term; Expr : Term }
+
+  type Defs = Dictionary<Name, Def>
+
+  type Value =
+    | VVar of Name
+    | VRef of Name
+    | VLam of Name * (Value -> Value)
+    | VApp of Value * Value
+    | VPi of Name * Value * (Value -> Value)
+    | VSelf of Name * (Value -> Value)
+    | VNew of Name * Value
+    | VUse of Value
+    | VTyp
+  
+  type VDef = { Type : Value; Expr : Value }
+
+  type VDefs = Dictionary<Name, VDef>
+
+  type VEnv = (Name * Value) list
+
+  let rec lookup (x : Name) env =
+    match env with
+    | [] -> ValueNone
+    | (x', t) :: _ when x' = x -> ValueSome t
+    | _ :: env' -> lookup x env'
+
+  let rec fresh (ns : Name list) (x : Name) =
+    if x = "_" then x
+    elif List.contains x ns then fresh ns $"{x}'"
+    else x
+  
+  let inline (@@) (t : Value) (u : Value) =
+    match t with
+    | VLam (_, t) -> t u
+    | _ -> VApp (t, u)
+  
+  let rec eval (defs : Defs) (vdefs : VDefs) (env : VEnv) (trm : Term) : Value =
+    let inline go t = eval defs vdefs env t
+    let inline gobind x t = fun u -> eval defs vdefs ((x, u) :: env) t
+    match trm with
+    | Var x ->
+      match lookup x env with
+      | ValueSome t -> t
+      | ValueNone ->
+        match vdefs.TryGetValue x with
+        | true, t -> t.Expr
+        | false, _ ->
+          let def = defs[x]
+          let vdef = { Type = go def.Type; Expr = go def.Expr }
+          vdefs.Add (x, vdef)
+          VRef x
+    | Lam (x, t) -> VLam (x, gobind x t) 
+    | App (t, u) -> (go t) @@ (go u)
+    | Pi (x, a, b) -> VPi (x, go a, gobind x b)
+    | Self (x, t) -> VSelf (x, gobind x t)
+    | New (x, t) -> VNew (x, go t)
+    | Use t -> VUse (go t)
+    | Let (x, _, t, u) -> eval defs vdefs ((x, go t) :: env) u
+    | Typ -> VTyp
+  
+  let rec quote (vdefs : VDefs) (ns : Name list) (t : Value) : Term =
+    match t with
+    | VVar x -> Var x
+    | VRef x -> quote vdefs ns (vdefs[x].Expr)
+    | VLam (x, t) ->
+      let x = fresh ns x
+      Lam (x, quote vdefs (x :: ns) (t (VVar x)))
+    | VApp (t, u) -> App (quote vdefs ns t, quote vdefs ns u)
+    | VPi (x, a, b) ->
+      let x = fresh ns x
+      Pi (x, quote vdefs ns a, quote vdefs ns (b (VVar x)))
+    | VSelf (x, t) -> Self (x, quote vdefs ns (t (VVar x)))
+    | VNew (x, t) -> New (x, quote vdefs ns t)
+    | VUse t -> Use (quote vdefs ns t)
+    | VTyp -> Typ
+  
+  let normalize defs vdefs env trm =
+    quote vdefs (List.map (fun (x, _) -> x) env) (eval defs vdefs  env trm)
+  
+  type Ctx = (Name * Value) list
+
+  let rec check
+    (defs : Defs) (vdefs : VDefs) (env : VEnv) (ctx : Ctx) (trm : Term) (typ : Value) : Term =
+    match trm with
+    | Lam (x, t) ->
+      match typ with
+      | VPi (_, a, b) ->
+        let ctx' = (x, a) :: ctx
+        check defs vdefs env ctx' t (b (VVar x)) 
+  
+  and infer
+    (defs : Defs) (vdefs : VDefs) (env : VEnv) (ctx : Ctx) (trm : Term) : Value =
+    match trm with
+    | Var x ->
+      match lookup x ctx with
+      | ValueSome tty -> tty
+      | ValueNone -> failwith $"can not infer type of {x}"
+
 module Kore =
 
   type Term =
@@ -13,6 +129,10 @@ module Kore =
     | Use of Term
     | Ann of bool * Term * Term
     | Typ
+  and Binding =
+    { Name : string; Type : Term; Erased : bool }
+  and Data =
+    { Name : string; Parameters : Binding list; Body : Term -> Term }
   
   /// Alpha equality, except references are by reference.
   let rec alphaeq trm trm' =
@@ -33,6 +153,7 @@ module Kore =
     | _ -> false
   
   type Def = { Name : string; Type : Term; Expr : Term }
+
 
   type Defs = Map<string, Def>
 

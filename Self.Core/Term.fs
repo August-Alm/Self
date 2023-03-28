@@ -158,12 +158,14 @@ module Term =
     | Fix (f, b) -> check eq bb md ctx (b (Fix (f, b))) typ
     | _ ->
       let infr = infer eq bb md ctx trm
+      let typ = reduce md false typ
       if not (equal eq bb md (depth ctx) infr typ) then
+        printfn $"inferred type of {trm}"
         raise <| TypeMismatch (ctx, infr, typ)
   
   and infer eq bb md ctx trm =
     match trm with
-    | Var _ -> trm
+    | Var (x, _) -> failwith $"unbound variable {x}"
     | Ref (_, i) -> md.Defs[i].Type
     | App (e, f, a) ->
       match reduce md false (infer eq bb md ctx f) with

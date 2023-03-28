@@ -11,6 +11,7 @@ let getLine (parseState : IParseState) =
 %token LET
 %token FIX
 %token SLF
+%token DAT
 %token NEW
 %token USE
 %token TYP
